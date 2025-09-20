@@ -1,9 +1,18 @@
 import os
+import sys
 from dotenv import load_dotenv
 from google import genai
 
 
-def main():
+def main():   
+    # Check if an argument is provided before accessing it
+    if len(sys.argv) < 2:
+        print("There is no message")
+        sys.exit(1)
+
+    # Get itnput from command line as an argument
+    message = sys.argv[1]
+
     # Load enviroment variables from .env file
     load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -18,7 +27,7 @@ def main():
     # Send a message to the model
     response = client.models.generate_content(
     model='gemini-2.0-flash-001', 
-    contents='Why is Boot.dev such a great place to learn backend development? Use one paragraph maximum.')
+    contents=message)
     
     # Print the response
     print(response.text)
