@@ -1,23 +1,22 @@
-from functions.get_files_info import get_files_info
+from functions.get_file_content import get_file_content
 
-def print_result(title, result):
-    print(f"{title}")
-    if result.startswith("Error:"):
-        print(f"    {result}")
+def show(title, text):
+    print(title)
+    # jeśli Error, zrób wcięcie jak w przykładach z poprzedniego zadania
+    if text.startswith("Error:"):
+        print(f"    {text}\n")
     else:
-        for line in result.splitlines():
-            print(f" {line}")
-    print() 
+        print(text if text.endswith("\n") else text + "\n")
 
 if __name__ == "__main__":
-    res1 = get_files_info("calculator", ".")
-    print_result('get_files_info("calculator", "."):\nResult for current directory:', res1)
+    r1 = get_file_content("calculator", "main.py")
+    show('get_file_content("calculator", "main.py"):', r1)
 
-    res2 = get_files_info("calculator", "pkg")
-    print_result("get_files_info(\"calculator\", \"pkg\"):\nResult for 'pkg' directory:", res2)
+    r2 = get_file_content("calculator", "pkg/calculator.py")
+    show('get_file_content("calculator", "pkg/calculator.py"):', r2)
 
-    res3 = get_files_info("calculator", "/bin")
-    print_result("get_files_info(\"calculator\", \"/bin\"):\nResult for '/bin' directory:", res3)
+    r3 = get_file_content("calculator", "/bin/cat")
+    show('get_file_content("calculator", "/bin/cat"):', r3)
 
-    res4 = get_files_info("calculator", "../")
-    print_result("get_files_info(\"calculator\", \"../\"):\nResult for '../' directory:", res4)
+    r4 = get_file_content("calculator", "pkg/does_not_exist.py")
+    show('get_file_content("calculator", "pkg/does_not_exist.py"):', r4)
