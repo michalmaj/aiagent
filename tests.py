@@ -1,22 +1,20 @@
-from functions.get_file_content import get_file_content
+from functions.write_files import write_file
 
 def show(title, text):
     print(title)
-    # jeśli Error, zrób wcięcie jak w przykładach z poprzedniego zadania
+    
     if text.startswith("Error:"):
         print(f"    {text}\n")
     else:
         print(text if text.endswith("\n") else text + "\n")
 
 if __name__ == "__main__":
-    r1 = get_file_content("calculator", "main.py")
-    show('get_file_content("calculator", "main.py"):', r1)
+    r1 = write_file("calculator", "lorem.txt", "wait, this isn't lorem ipsum")
+    show('write_file("calculator", "lorem.txt", "wait, this isn\'t lorem ipsum"):', r1)
 
-    r2 = get_file_content("calculator", "pkg/calculator.py")
-    show('get_file_content("calculator", "pkg/calculator.py"):', r2)
+    r2 = write_file("calculator", "pkg/morelorem.txt", "lorem ipsum dolor sit amet")
+    show('write_file("calculator", "pkg/morelorem.txt", "lorem ipsum dolor sit amet"):', r2)
 
-    r3 = get_file_content("calculator", "/bin/cat")
-    show('get_file_content("calculator", "/bin/cat"):', r3)
-
-    r4 = get_file_content("calculator", "pkg/does_not_exist.py")
-    show('get_file_content("calculator", "pkg/does_not_exist.py"):', r4)
+    r3 = write_file("calculator", "/tmp/temp.txt", "this should not be allowed")
+    show('write_file("calculator", "/tmp/temp.txt", "this should not be allowed"):', r3)
+    
