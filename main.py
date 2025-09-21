@@ -4,6 +4,7 @@ from google import genai
 from dotenv import load_dotenv
 from google.genai import types
 from config import system_prompt
+from functions.get_files_info import schema_get_files_info
 
 
 def main():   
@@ -45,10 +46,18 @@ def main():
 
 
 def generate_content(client, messages, user_prompt, verbose):
+    available_functions = types.Tool(
+        function_declarations=[
+            schema_get_files_info,
+        ]
+    )
+
     response = client.models.generate_content(
         model="gemini-2.0-flash-001",
         contents=messages,
-        config=types.GenerateContentConfig(system_instruction=system_prompt),
+        config=types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            tools=[available_functions],),
     )
     if verbose:
         print(f'User prompt: {user_prompt}')
@@ -60,8 +69,21 @@ def generate_content(client, messages, user_prompt, verbose):
         print("Prompt tokens:", getattr(usage, "prompt_token_count", "N/A"))
         print("Response tokens:", getattr(usage, "candidates_token_count", "N/A"))
 
-    print("Response:")
-    print(response.text)
+    printed_any_call = False
+    for candidate in getattr(response, "candidates", []) or []:
+        content = getattr(candidate, "content", None)
+        if not content:
+            continue
+        for part in getattr(content, "parts", []) or []:
+            func_call = getattr(part, "function_call", None)
+            if func_call:
+                printed_any_call = True
+                # args mogą być dict-em – drukujemy jawnie
+                print(f"Calling function: {func_call.name}({func_call.args})")
+
+    if not printed_any_call:
+        # jeśli model nie zawołał funkcji, wypisz zwykły tekst
+        print(response.text)
 
 if __name__ == "__main__":
     main()
