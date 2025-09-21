@@ -50,7 +50,6 @@ def main():
 
 
 def generate_content(client, messages, user_prompt, verbose):
-    # 1) Zdefiniuj dostępne narzędzia (4 schematy)
     available_functions = types.Tool(
         function_declarations=[
             schema_get_files_info,
@@ -64,41 +63,34 @@ def generate_content(client, messages, user_prompt, verbose):
 
     for step in range(max_iters):
         try:
-            # 2) Każde wywołanie dostaje CAŁĄ historię `messages`
             response = client.models.generate_content(
                 model="gemini-2.0-flash-001",
-                contents=messages,
+                contents=messages,  # zawsze cała historia
                 config=types.GenerateContentConfig(
                     tools=[available_functions],
                     system_instruction=system_prompt,
                 ),
             )
 
-            if verbose:
+            if verbose and step == 0:
                 usage = getattr(response, "usage_metadata", None)
-                print(f"User prompt: {user_prompt}") if step == 0 else None
+                print(f"User prompt: {user_prompt}")
                 if usage:
                     print("Prompt tokens:", getattr(usage, "prompt_token_count", "N/A"))
                     print("Response tokens:", getattr(usage, "candidates_token_count", "N/A"))
 
-            # 3) Jeśli model zwrócił finalny tekst — drukujemy i kończymy
-            if getattr(response, "text", None) and response.text.strip():
-                print(response.text)
-                break
-
-            # 4) Dodajemy wszystkie odpowiedzi-kandydatów (asystenta) do historii
-            #    oraz obsługujemy ewentualne wywołania funkcji
             made_any_call = False
 
+            # 1) Dodajemy kandydatów (assistant) i obsługujemy function_call
             for candidate in getattr(response, "candidates", []) or []:
                 content = getattr(candidate, "content", None)
                 if not content:
                     continue
 
-                # a) dodaj asystenta (jego plan / function_call) do rozmowy
+                # assistant message (plan/call) -> do historii
                 messages.append(content)
 
-                # b) sprawdź, czy w częściach jest function_call
+                # parts -> sprawdzamy, czy są wywołania narzędzi
                 for part in getattr(content, "parts", []) or []:
                     func_call = getattr(part, "function_call", None)
                     if not func_call:
@@ -106,18 +98,16 @@ def generate_content(client, messages, user_prompt, verbose):
 
                     made_any_call = True
 
-                    # 5) Wykonaj funkcję (tu następuje realne działanie)
+                    # wykonanie narzędzia
                     function_call_result = call_function(func_call, verbose=verbose)
 
-                    # 6) Wyciągnij formalne function_response (name + response dict)
+                    # wyciągnięcie formalnego function_response
                     try:
                         fr = function_call_result.parts[0].function_response
                     except Exception as e:
                         raise RuntimeError(f"Fatal: tool response missing or malformed: {e}")
 
-                    # 7) Zgodnie z instrukcją: zamień odpowiedź narzędzia
-                    #    na WIADOMOŚĆ z rolą 'user' i dołóż do historii.
-                    #    (to “oddaje” wynik modelowi jako kolejny krok konwersacji)
+                    # wynik narzędzia jako wiadomość 'user' -> do historii
                     messages.append(
                         types.Content(
                             role="user",
@@ -125,23 +115,28 @@ def generate_content(client, messages, user_prompt, verbose):
                         )
                     )
 
-                    # 8) Debug wyników narzędzi w trybie verbose
                     if verbose:
                         print(f"-> {fr.response}")
 
-            # 9) Jeśli nie było żadnego function_call i nie było finalnego tekstu,
-            #    nie ma po co kręcić pętli dalej.
-            if not made_any_call and not (getattr(response, "text", None) and response.text.strip()):
-                if verbose:
-                    print("(no function call and no final text; stopping)")
+            # 2) Jeśli były wywołania, idziemy do kolejnej iteracji (kolejny krok planu)
+            if made_any_call:
+                continue
+
+            # 3) Skoro nie było żadnych function_call, sprawdzamy finalny tekst
+            final_text = (response.text or "").strip()
+            if final_text:
+                print(final_text)
                 break
 
+            # 4) Brak calli i brak finalnego tekstu -> kończymy pętlę
+            if verbose:
+                print("(no function call and no final text; stopping)")
+            break
+
         except Exception as e:
-            # 10) Błędy nie mogą wieszać pętli
             print(f"Error: {e}")
             break
     else:
-        # pętla dobiegła do max_iters
         if verbose:
             print("Reached max iterations without final text.")
 
